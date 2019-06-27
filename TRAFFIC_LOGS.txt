@@ -1,0 +1,332 @@
+[CLIENT BOUND]  -  HANDLED: ServerToClientHandshakePacket(jwt=...)
+[CLIENT BOUND]  -  UNHANDLED: PlayStatusPacket(status=LOGIN_SUCCESS)
+[CLIENT BOUND]  -  UNHANDLED: ResourcePacksInfoPacket(behaviorPackInfos=[], resourcePackInfos=[], forcedToAccept=false, scripting=false)
+[SERVER BOUND]  -  UNHANDLED: ResourcePackClientResponsePacket(packIds=[], status=HAVE_ALL_PACKS)
+[CLIENT BOUND]  -  UNHANDLED: ResourcePackStackPacket(forcedToAccept=false, behaviorPacks=[], resourcePacks=[], experimental=false)
+[SERVER BOUND]  -  UNHANDLED: ResourcePackClientResponsePacket(packIds=[], status=COMPLETED)
+[01:02:35 DEBUG]: StartGamePacket still has 1 bytes to read!
+[01:02:35 DEBUG]: CraftingDataPacket still has 1 bytes to read!
+[CLIENT BOUND]  -  UNHANDLED: InventoryContentPacket(contents=[], containerId=NONE)
+[CLIENT BOUND]  -  UNHANDLED: SetPlayerGameTypePacket(gamemode=5)
+[CLIENT BOUND]  -  UNHANDLED: SetPlayerGameTypePacket(gamemode=5)
+[CLIENT BOUND]  -  UNHANDLED: PlayerListPacket(entries=[PlayerListPacket.Entry(uuid=9e3bb1ef-090d-435e-5e3d-bff5a4a89bb2, skinId=c18e65aa-7b21-4637-9b63-8ad63622ef01_Alex, geometryName=geometry.humanoid.customSlim)], type=ADD)
+[CLIENT BOUND]  -  UNHANDLED: SetTimePacket(time=67279178)
+[CLIENT BOUND]  -  UNHANDLED: StartGamePacket(gamerules=[GameRule(name=commandblockoutput, value=true), GameRule(name=dodaylightcycle, value=true), GameRule(name=doentitydrops, value=true), GameRule(name=dofiretick, value=true), GameRule(name=domobloot, value=true), GameRule(name=domobspawning, value=true), GameRule(name=dotiledrops, value=true), GameRule(name=doweathercycle, value=true), GameRule(name=drowningdamage, value=true), GameRule(name=falldamage, value=true), GameRule(name=firedamage, value=true), GameRule(name=keepinventory, value=false), GameRule(name=mobgriefing, value=true), GameRule(name=pvp, value=true), GameRule(name=showcoordinates, value=true), GameRule(name=naturalregeneration, value=true), GameRule(name=tntexplodes, value=true), GameRule(name=sendcommandfeedback, value=true), GameRule(name=experimentalgameplay, value=false), GameRule(name=maxcommandchainlength, value=131070), GameRule(name=doinsomnia, value=true), GameRule(name=commandblocksenabled, value=true), GameRule(name=randomtickspeed, value=2), GameRule(name=doimmediaterespawn, value=false), GameRule(name=showdeathmessages, value=true), GameRule(name=functioncommandlimit, value=20000)], uniqueEntityId=-4294967295, runtimeEntityId=5413, playerGamemode=5, playerPosition=(287.94827, 162.62001, -54.1407), rotation=(49.34697, 90.2095), seed=-1708425704, dimensionId=0, generatorId=1, levelGamemode=0, difficulty=3, defaultSpawn=(280, 32767, 4), acheivementsDisabled=false, time=67279178, eduLevel=false, eduFeaturesEnabled=false, rainLevel=0.36035088, lightningLevel=0.0, platformLockedContentConfirmed=false, multiplayerGame=true, broadcastingToLan=true, xblBroadcastMode=FRIENDS_OF_FRIENDS, platformBroadcastMode=FRIENDS_OF_FRIENDS, commandsEnabled=false, texturePacksRequired=false, bonusChestEnabled=false, startingWithMap=false, trustingPlayers=false, defaultPlayerPermission=1, serverChunkTickRange=4, behaviorPackLocked=false, resourcePackLocked=false, fromLockedWorldTemplate=false, usingMsaGamertagsOnly=true, fromWorldTemplate=false, worldTemplateOptionLocked=false, levelId=Bedrock level, worldName=Bedrock level, premiumWorldTemplateId=00000000-0000-0000-0000-000000000000, trial=false, currentTick=65029238, enchantmentSeed=1848829623, cachedPalette=null, multiplayerCorrelationId=ff549ea9-7300-4378-8b13-9fed12a2ae1c)
+[CLIENT BOUND]  -  UNHANDLED: SetSpawnPositionPacket(spawnType=PLAYER_SPAWN, blockPosition=(317, 163, -54), spawnForced=false)
+[CLIENT BOUND]  -  UNHANDLED: SetTimePacket(time=67279178)
+[CLIENT BOUND]  -  UNHANDLED: SetDifficultyPacket(difficulty=-2)
+[CLIENT BOUND]  -  UNHANDLED: SetCommandsEnabledPacket(commandsEnabled=false)
+[CLIENT BOUND]  -  UNHANDLED: LevelEventPacket(event=START_RAIN, position=(0.0, 0.0, 0.0), data=23615)
+[CLIENT BOUND]  -  UNHANDLED: AdventureSettingsPacket(playerFlags=32, commandPermission=1, worldFlags=447, playerPermission=2, customFlags=0, uniqueEntityId=-4294967295)
+[CLIENT BOUND]  -  UNHANDLED: GameRulesChangedPacket(gameRules=[GameRule(name=commandblockoutput, value=true), GameRule(name=dodaylightcycle, value=true), GameRule(name=doentitydrops, value=true), GameRule(name=dofiretick, value=true), GameRule(name=domobloot, value=true), GameRule(name=domobspawning, value=true), GameRule(name=dotiledrops, value=true), GameRule(name=doweathercycle, value=true), GameRule(name=drowningdamage, value=true), GameRule(name=falldamage, value=true), GameRule(name=firedamage, value=true), GameRule(name=keepinventory, value=false), GameRule(name=mobgriefing, value=true), GameRule(name=pvp, value=true), GameRule(name=showcoordinates, value=true), GameRule(name=naturalregeneration, value=true), GameRule(name=tntexplodes, value=true), GameRule(name=sendcommandfeedback, value=true), GameRule(name=experimentalgameplay, value=false), GameRule(name=maxcommandchainlength, value=131070), GameRule(name=doinsomnia, value=true), GameRule(name=commandblocksenabled, value=true), GameRule(name=randomtickspeed, value=2), GameRule(name=doimmediaterespawn, value=false), GameRule(name=showdeathmessages, value=true), GameRule(name=functioncommandlimit, value=20000)])
+[CLIENT BOUND]  -  UNHANDLED: PlayerListPacket(entries=[PlayerListPacket.Entry(uuid=9e3bb1ef-090d-435e-5e3d-bff5a4a89bb2, skinId=c18e65aa-7b21-4637-9b63-8ad63622ef01_Alex, geometryName=geometry.humanoid.customSlim)], type=ADD)
+[CLIENT BOUND]  -  UNHANDLED: AdventureSettingsPacket(playerFlags=32, commandPermission=1, worldFlags=447, playerPermission=2, customFlags=0, uniqueEntityId=-4294967295)
+[CLIENT BOUND]  -  UNHANDLED: BiomeDefinitionListPacket(tag=TAG_Compound: 71 entries
+(
+   TAG_Compound("roofed_forest_mutated"): 2 entries
+   (
+      TAG_Float("temperature"): 0.7
+      TAG_Float("downfall"): 0.8
+   )
+   TAG_Compound("warm_ocean"): 2 entries
+   (
+      TAG_Float("temperature"): 0.5
+      TAG_Float("downfall"): 0.5
+   )
+   TAG_Compound("sunflower_plains"): 2 entries
+   (
+      TAG_Float("temperature"): 0.8
+      TAG_Float("downfall"): 0.4
+   )
+   TAG_Compound("mushroom_island_shore"): 2 entries
+   (
+      TAG_Float("temperature"): 0.9
+      TAG_Float("downfall"): 1.0
+   )
+   TAG_Compound("ice_plains"): 2 entries
+   (
+      TAG_Float("temperature"): 0.0
+      TAG_Float("downfall"): 0.5
+   )
+   TAG_Compound("jungle_mutated"): 2 entries
+   (
+      TAG_Float("temperature"): 0.95
+      TAG_Float("downfall"): 0.9
+   )
+   TAG_Compound("flower_forest"): 2 entries
+   (
+      TAG_Float("temperature"): 0.7
+      TAG_Float("downfall"): 0.8
+   )
+   TAG_Compound("cold_ocean"): 2 entries
+   (
+      TAG_Float("temperature"): 0.5
+      TAG_Float("downfall"): 0.5
+   )
+   TAG_Compound("the_end"): 2 entries
+   (
+      TAG_Float("temperature"): 0.5
+      TAG_Float("downfall"): 0.5
+   )
+   TAG_Compound("hell"): 2 entries
+   (
+      TAG_Float("temperature"): 2.0
+      TAG_Float("downfall"): 0.0
+   )
+   TAG_Compound("desert_hills"): 2 entries
+   (
+      TAG_Float("temperature"): 2.0
+      TAG_Float("downfall"): 0.0
+   )
+   TAG_Compound("extreme_hills_edge"): 2 entries
+   (
+      TAG_Float("temperature"): 0.2
+      TAG_Float("downfall"): 0.3
+   )
+   TAG_Compound("lukewarm_ocean"): 2 entries
+   (
+      TAG_Float("temperature"): 0.5
+      TAG_Float("downfall"): 0.5
+   )
+   TAG_Compound("forest_hills"): 2 entries
+   (
+      TAG_Float("temperature"): 0.7
+      TAG_Float("downfall"): 0.8
+   )
+   TAG_Compound("savanna"): 2 entries
+   (
+      TAG_Float("temperature"): 1.2
+      TAG_Float("downfall"): 0.0
+   )
+   TAG_Compound("ice_plains_spikes"): 2 entries
+   (
+      TAG_Float("temperature"): 0.0
+      TAG_Float("downfall"): 1.0
+   )
+   TAG_Compound("cold_taiga_mutated"): 2 entries
+   (
+      TAG_Float("temperature"): -0.5
+      TAG_Float("downfall"): 0.4
+   )
+   TAG_Compound("mesa_plateau"): 2 entries
+   (
+      TAG_Float("temperature"): 2.0
+      TAG_Float("downfall"): 0.0
+   )
+   TAG_Compound("frozen_ocean"): 2 entries
+   (
+      TAG_Float("temperature"): 0.0
+      TAG_Float("downfall"): 0.5
+   )
+   TAG_Compound("mega_taiga_hills"): 2 entries
+   (
+      TAG_Float("temperature"): 0.3
+      TAG_Float("downfall"): 0.8
+   )
+   TAG_Compound("savanna_plateau"): 2 entries
+   (
+      TAG_Float("temperature"): 1.0
+      TAG_Float("downfall"): 0.0
+   )
+   TAG_Compound("bamboo_jungle_hills"): 2 entries
+   (
+      TAG_Float("temperature"): 0.95
+      TAG_Float("downfall"): 0.9
+   )
+   TAG_Compound("taiga_hills"): 2 entries
+   (
+      TAG_Float("temperature"): 0.25
+      TAG_Float("downfall"): 0.8
+   )
+   TAG_Compound("extreme_hills_plus_trees"): 2 entries
+   (
+      TAG_Float("temperature"): 0.2
+      TAG_Float("downfall"): 0.3
+   )
+   TAG_Compound("mega_taiga"): 2 entries
+   (
+      TAG_Float("temperature"): 0.3
+      TAG_Float("downfall"): 0.8
+   )
+   TAG_Compound("savanna_plateau_mutated"): 2 entries
+   (
+      TAG_Float("temperature"): 1.0
+      TAG_Float("downfall"): 0.5
+   )
+   TAG_Compound("deep_warm_ocean"): 2 entries
+   (
+      TAG_Float("temperature"): 0.5
+      TAG_Float("downfall"): 0.5
+   )
+   TAG_Compound("ocean"): 2 entries
+   (
+      TAG_Float("temperature"): 0.5
+      TAG_Float("downfall"): 0.5
+   )
+   TAG_Compound("extreme_hills_plus_trees_mutated"): 2 entries
+   (
+      TAG_Float("temperature"): 0.2
+      TAG_Float("downfall"): 0.3
+   )
+   TAG_Compound("jungle"): 2 entries
+   (
+      TAG_Float("temperature"): 0.95
+      TAG_Float("downfall"): 0.9
+   )
+   TAG_Compound("jungle_edge_mutated"): 2 entries
+   (
+      TAG_Float("temperature"): 0.95
+      TAG_Float("downfall"): 0.8
+   )
+   TAG_Compound("frozen_river"): 2 entries
+   (
+      TAG_Float("temperature"): 0.0
+      TAG_Float("downfall"): 0.5
+   )
+   TAG_Compound("forest"): 2 entries
+   (
+      TAG_Float("temperature"): 0.7
+      TAG_Float("downfall"): 0.8
+   )
+   TAG_Compound("birch_forest"): 2 entries
+   (
+      TAG_Float("temperature"): 0.6
+      TAG_Float("downfall"): 0.6
+   )
+   TAG_Compound("deep_lukewarm_ocean"): 2 entries
+   (
+      TAG_Float("temperature"): 0.5
+      TAG_Float("downfall"): 0.5
+   )
+   TAG_Compound("swampland"): 2 entries
+   (
+      TAG_Float("temperature"): 0.8
+      TAG_Float("downfall"): 0.5
+   )
+   TAG_Compound("deep_ocean"): 2 entries
+   (
+      TAG_Float("temperature"): 0.5
+      TAG_Float("downfall"): 0.5
+   )
+   TAG_Compound("deep_frozen_ocean"): 2 entries
+   (
+      TAG_Float("temperature"): 0.0
+      TAG_Float("downfall"): 0.5
+   )
+   TAG_Compound("legacy_frozen_ocean"): 2 entries
+   (
+      TAG_Float("temperature"): 0.0
+      TAG_Float("downfall"): 0.5
+   )
+   TAG_Compound("taiga_mutated"): 2 entries
+   (
+      TAG_Float("temperature"): 0.25
+      TAG_Float("downfall"): 0.8
+   )
+   TAG_Compound("bamboo_jungle"): 2 entries
+   (
+      TAG_Float("temperature"): 0.95
+      TAG_Float("downfall"): 0.9
+   )
+   TAG_Compound("birch_forest_hills_mutated"): 2 entries
+   (
+      TAG_Float("temperature"): 0.7
+      TAG_Float("downfall"): 0.8
+   )
+   TAG_Compound("birch_forest_mutated"): 2 entries
+   (
+      TAG_Float("temperature"): 0.7
+      TAG_Float("downfall"): 0.8
+   )
+   TAG_Compound("desert_mutated"): 2 entries
+   (
+      TAG_Float("temperature"): 2.0
+      TAG_Float("downfall"): 0.0
+   )
+   TAG_Compound("mesa"): 2 entries
+   (
+      TAG_Float("temperature"): 2.0
+      TAG_Float("downfall"): 0.0
+   )
+   TAG_Compound("jungle_edge"): 2 entries
+   (
+      TAG_Float("temperature"): 0.95
+      TAG_Float("downfall"): 0.8
+   )
+   TAG_Compound("jungle_hills"): 2 entries
+   (
+      TAG_Float("temperature"): 0.95
+      TAG_Float("downfall"): 0.9
+   )
+   TAG_Compound("plains"): 2 entries
+   (
+      TAG_Float("temperature"): 0.8
+      TAG_Float("downfall"): 0.4
+   )
+   TAG_Compound("redwood_taiga_mutated"): 2 entries
+   (
+      TAG_Float("temperature"): 0.25
+      TAG_Float("downfall"): 0.8
+   )
+   TAG_Compound("s
+wamplaC:\Users\jrhod\Documents\Projects\ProxyPass>nd_mutated"): 2 entries
+   (
+      TAG_Float("temperature"): 0.8
+      TAG_Float("downfall"): 0.5
+   )
+   TAG_Compound("ice_mountains"): 2 entries
+   (
+      TAG_Float("temperature"): 0.0
+      TAG_Float("downfall"): 0.5
+   )
+   TAG_Compound("mesa_plateau_stone_mutated"): 2 entries
+   (
+      TAG_Float("temperature"): 2.0
+      TAG_Float("downfall"): 0.0
+   )
+   TAG_Compound("taiga"): 2 entries
+   (
+      TAG_Float("temperature"): 0.25
+      TAG_Float("downfall"): 0.8
+   )
+   TAG_Compound("extreme_hills_mutated"): 2 entries
+   (
+      TAG_Float("temperature"): 0.2
+      TAG_Float("downfall"): 0.3
+   )
+   TAG_Compound("mesa_plateau_stone"): 2 entries
+   (
+      TAG_Float("temperature"): 2.0
+      TAG_Float("downfall"): 0.0
+   )
+   TAG_Compound("birch_forest_hills"): 2 entries
+   (
+      TAG_Float("temperature"): 0.6
+      TAG_Float("downfall"): 0.6
+   )
+   TAG_Compound("mushroom_island"): 2 entries
+   (
+      TAG_Float("temperature"): 0.9
+      TAG_Float("downfall"): 1.0
+   )
+   TAG_Compound("mesa_bryce"): 2 entries
+   (
+      TAG_Float("temperature"): 2.0
+      TAG_F
+loat("dow
+nfall"): 0.0
+   C:\Users\jrhod\Documents\Projects\ProxyPass>)
+   TAG_Compound("mesa_plateau_mutated"): 2 entries
+   (
+      TAG_Float("temperature"): 2.0
+      TAG_Float("downfall"): 0.0
+   )
+   TAG_Compound("deep_cold_ocean"): 2 entries
+   (
+      TAG_Float("temperature"): 0.5
+      TAG_Float("downfall"): 0.5
+   )
+   TAG_Compound("cold_taiga_hills"): 2 entries
+   (
+      TAG_Float("temperature"): -0.5
+      TAG_Float("downfall"): 0.4

@@ -1,0 +1,1 @@
+mvn clean package exec:java -Dexec.mainClass=games.redpoint.App

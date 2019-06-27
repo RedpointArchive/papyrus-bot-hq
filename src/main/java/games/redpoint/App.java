@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 
 import io.netty.util.AsciiString;
+import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
 
 import com.nimbusds.jose.*;
@@ -41,6 +42,7 @@ import java.security.spec.ECGenParameterSpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Date;
+import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -72,11 +74,12 @@ public class App {
             }
             session.setPacketCodec(Bedrock_v354.V354_CODEC);
 
-            ArrayNode chainData;
+            //ArrayNode chainData;
 
             KeyPair proxyKeyPair = EncryptionUtils.createKeyPair();
             ObjectMapper jsonMapper = new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
 
+            /*
             JsonNode certData;
             try {
                 // todo: packet doesn't exist
@@ -95,6 +98,9 @@ public class App {
             JSONObject extraData;
             AuthData authData;
             JWSObject jwt = JWSObject.parse(certChainData.get(certChainData.size() - 1).asText());
+
+            // jwt is the JWT in the chain data at this point
+
             JsonNode payload = jsonMapper.readTree(jwt.getPayload().toBytes());
 
             if (payload.get("extraData").getNodeType() != JsonNodeType.OBJECT) {
@@ -110,16 +116,66 @@ public class App {
                 throw new RuntimeException("Identity Public Key was not found!");
             }
             ECPublicKey identityPublicKey = EncryptionUtils.generateKey(payload.get("identityPublicKey").textValue());
+            */
 
+           /* AuthData authData = new AuthData(
+                "hachqueAU",
+                UUID.fromString("5e430d09-efb1-3b9e-b29b-a8a4f5bf3d5e"),
+                "2533274941093282"
+            );*/
+
+            JSONObject extraData = new JSONObject();
+            extraData.put("displayName", "Papyrus Chat Bot");
+            extraData.put("identity", UUID.randomUUID().toString());
+            //extraData.put("XUID", "2533274941093282");
+
+            /*ECPublicKey identityPublicKey;
+            try {
+                identityPublicKey = EncryptionUtils.generateKey(
+                    "MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE8ELkixyLcwlZryUQcu1TvPOmI2B7vX83ndnWRUaXm74wFfa5f/lwQNTfrLVHa2PmenpGI6JhIMUJaWZrjmMj90NoKNFSNBuKdm8rYiXsfaz3K36x/1U26HpG0ZxK/V1V"
+                );
+            }
+            catch (NoSuchAlgorithmException ex) {}
+            catch (InvalidKeySpecException ex) {}*/
+
+            Random rand = new Random();
+
+            JSONObject skinData = new JSONObject();
+            skinData.put("CapeData", "");
+            skinData.put("ClientRandomId", rand.nextLong());
+            skinData.put("CurrentInputMode", 1);
+            skinData.put("DefaultInputMode", 1);
+            skinData.put("DeviceId", UUID.randomUUID().toString());
+            skinData.put("DeviceModel", "Papyrus Chat Monitor");
+            skinData.put("DeviceOS", 7);
+            skinData.put("GameVersion", "1.11.4");
+            skinData.put("GuiScale", -1);
+            skinData.put("LanguageCode", "en_US");
+            skinData.put("PlatformOfflineId", "");
+            skinData.put("PlatformOnlineId", "");
+            skinData.put("PremiumSkin", true);
+            skinData.put("SelfSignedId", UUID.randomUUID().toString());
+            skinData.put("ServerAddress", "34.94.110.9:19132");
+            skinData.put("SkinData", SkinConstants.SkinData);
+            skinData.put("SkinGeometry", SkinConstants.SkinGeometry);
+            skinData.put("SkinGeometryName", SkinConstants.SkinGeometryName);
+            skinData.put("SkinId", SkinConstants.SkinId);
+            skinData.put("ThirdPartyName", "Papyrus Chat Bot");
+            skinData.put("UIProfile", 0);
+
+            /*
             // todo: packet doesn't exist
             JWSObject clientJwt = JWSObject.parse(packet.getSkinData().toString());
             skinData = clientJwt.getPayload().toJSONObject();
+            */
 
             SignedJWT authDataSigned = forgeAuthData(proxyKeyPair, extraData);
             JWSObject skinDataSigned = forgeSkinData(proxyKeyPair, skinData);
-            chainData.remove(chainData.size() - 1);
+
+            ArrayNode chainData = jsonMapper.createArrayNode();
             chainData.add(authDataSigned.serialize());
             JsonNode json = jsonMapper.createObjectNode().set("chain", chainData);
+
             AsciiString chainDataText;
             try {
                 chainDataText = new AsciiString(jsonMapper.writeValueAsBytes(json));
@@ -132,10 +188,12 @@ public class App {
             login.setSkinData(AsciiString.of(skinDataSigned.serialize()));
             login.setProtocolVersion(Bedrock_v354.V354_CODEC.getProtocolVersion());
             
+            PacketHandler packetHandler = new PacketHandler(session, proxyKeyPair);
+
             session.sendPacketImmediately(login);
-            //session.setBatchedHandler(new BatchedHandler());
+            session.setBatchedHandler(new PacketBatchHandler(packetHandler));
             session.setLogging(true);
-            session.setPacketHandler(new PacketHandler());
+            session.setPacketHandler(packetHandler);
 
             session.addDisconnectHandler(disconnectReason -> {
                 running.set(false);
