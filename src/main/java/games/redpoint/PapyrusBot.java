@@ -1,6 +1,7 @@
 package games.redpoint;
 
 import java.net.URI;
+import java.net.UnknownHostException;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
@@ -13,6 +14,9 @@ import java.util.UUID;
 
 import javax.crypto.SecretKey;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flowpowered.math.vector.Vector3f;
 import com.nimbusds.jwt.SignedJWT;
 import com.nukkitx.protocol.bedrock.BedrockClientSession;
@@ -41,9 +45,9 @@ import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
 public class PapyrusBot implements BedrockPacketHandler {
     public final BedrockClientSession session;
     private final KeyPair proxyKeyPair;
-    private final HashMap<String, PlayerListPacket.Entry> players;
+    public final HashMap<String, PlayerListPacket.Entry> players;
     private String currentFocusedPlayer;
-    private final HashMap<String, Vector3f> knownPlayerPositions;
+    public final HashMap<String, Vector3f> knownPlayerPositions;
     private State currentState;
     private final HashMap<Long, String> runtimePlayerLookup;
     private final HashMap<String, Long> lastUpdatedTime;
@@ -53,12 +57,15 @@ public class PapyrusBot implements BedrockPacketHandler {
     private CommandManager gameModeCommand;
     private CommandManager invisibilityCommand;
     private boolean updateCommands;
+    private BotWebSocketServer webSocketServer;
+    public ObjectMapper objectMapper;
+    private int lastDeopedWarningTime = 0;
 
     private enum State {
         WAITING_FOR_OUT_OF_DATE_PLAYER, SEND_TELEPORT, WAIT_FOR_POSITION,
     }
 
-    public PapyrusBot(BedrockClientSession session, KeyPair proxyKeyPair) {
+    public PapyrusBot(BedrockClientSession session, KeyPair proxyKeyPair) throws UnknownHostException {
         this.session = session;
         this.proxyKeyPair = proxyKeyPair;
         this.players = new HashMap<String, PlayerListPacket.Entry>();
@@ -71,6 +78,10 @@ public class PapyrusBot implements BedrockPacketHandler {
         this.seenBot = false;
         this.updateCommands = false;
         this.lastUpdatedTime = new HashMap<String, Long>();
+        this.webSocketServer = new BotWebSocketServer(this);
+        this.objectMapper = new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+
+        this.webSocketServer.start();
 
         this.gameModeCommand = new CommandManager("gamemode creative @s");
         this.invisibilityCommand = new CommandManager("effect @s invisibility 99999 255 true");
@@ -143,9 +154,18 @@ public class PapyrusBot implements BedrockPacketHandler {
 
         this.knownPlayerPositions.put(playerUuid, packet.getPosition());
         this.lastUpdatedTime.put(playerUuid, System.currentTimeMillis());
-        System.out.println("Move player: " + packet.toString());
 
-        if (this.currentFocusedPlayer.equals(playerUuid)) {
+        PlayerPositionWebSocketMessage msg = new PlayerPositionWebSocketMessage();
+        msg.playerName = this.players.get(playerUuid).getName();
+        msg.x = packet.getPosition().getX();
+        msg.z = packet.getPosition().getZ();
+        try {
+            this.webSocketServer.broadcast(this.objectMapper.writeValueAsString(msg));
+        } catch (JsonProcessingException e) {
+            System.out.println(e.toString());
+        }
+
+        if (playerUuid.equals(this.currentFocusedPlayer)) {
             this.currentState = State.WAITING_FOR_OUT_OF_DATE_PLAYER;
         }
 
@@ -154,11 +174,20 @@ public class PapyrusBot implements BedrockPacketHandler {
 
     @Override
     public boolean handle(AddPlayerPacket packet) {
-        System.out.println("Add player: " + packet.toString());
         this.runtimePlayerLookup.put(packet.getRuntimeEntityId(), packet.getUuid().toString());
 
         this.knownPlayerPositions.put(packet.getUuid().toString(), packet.getPosition());
         this.lastUpdatedTime.put(packet.getUuid().toString(), System.currentTimeMillis());
+
+        PlayerPositionWebSocketMessage msg = new PlayerPositionWebSocketMessage();
+        msg.playerName = this.players.get(packet.getUuid().toString()).getName();
+        msg.x = packet.getPosition().getX();
+        msg.z = packet.getPosition().getZ();
+        try {
+            this.webSocketServer.broadcast(this.objectMapper.writeValueAsString(msg));
+        } catch (JsonProcessingException e) {
+            System.out.println(e.toString());
+        }
 
         if (packet.getUuid().toString().equals(this.currentFocusedPlayer)) {
             this.currentState = State.WAITING_FOR_OUT_OF_DATE_PLAYER;
@@ -210,8 +239,15 @@ public class PapyrusBot implements BedrockPacketHandler {
 
     @Override
     public boolean handle(TextPacket packet) {
-        System.out.println("TextPacket");
-        System.out.println(packet.getMessage());
+        PlayerChatWebSocketMessage msg = new PlayerChatWebSocketMessage();
+        msg.playerName = packet.getSourceName();
+        msg.message = packet.getMessage();
+        try {
+            this.webSocketServer.broadcast(this.objectMapper.writeValueAsString(msg));
+        } catch (JsonProcessingException e) {
+            System.out.println(e.toString());
+        }
+
         return false;
     }
 
@@ -226,6 +262,11 @@ public class PapyrusBot implements BedrockPacketHandler {
         }
 
         if (!this.gameModeCommand.isSuccess || !this.invisibilityCommand.isSuccess) {
+            this.lastDeopedWarningTime++;
+            if (this.lastDeopedWarningTime > (1000 / 50)) {
+                System.out.println("WARNING: Papyrus user is not operator. Can't function on server!");
+                this.lastDeopedWarningTime = 0;
+            }
             return;
         }
 

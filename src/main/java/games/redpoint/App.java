@@ -26,6 +26,7 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
 
 import java.net.URI;
+import java.net.UnknownHostException;
 import java.security.interfaces.ECPrivateKey;
 import java.util.Date;
 import java.util.Random;
@@ -173,7 +174,11 @@ public class App {
             login.setSkinData(AsciiString.of(skinDataSigned.serialize()));
             login.setProtocolVersion(Bedrock_v354.V354_CODEC.getProtocolVersion());
 
-            this.bot = new PapyrusBot(session, proxyKeyPair);
+            try {
+                this.bot = new PapyrusBot(session, proxyKeyPair);
+            } catch (UnknownHostException e) {
+                throw new RuntimeException(e);
+            }
 
             session.sendPacketImmediately(login);
             // session.setBatchedHandler(new PacketBatchHandler(packetHandler));
