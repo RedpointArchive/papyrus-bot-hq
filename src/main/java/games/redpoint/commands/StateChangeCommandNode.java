@@ -2,9 +2,13 @@ package games.redpoint.commands;
 
 import com.nukkitx.protocol.bedrock.packet.CommandOutputPacket;
 
+import org.apache.log4j.Logger;
+
 import games.redpoint.PapyrusBot;
 
 public class StateChangeCommandNode implements CommandNode {
+    private static final Logger LOG = Logger.getLogger(StateChangeCommandNode.class);
+
     private String newStateName;
 
     public StateChangeCommandNode(String newStateName) {
@@ -18,6 +22,7 @@ public class StateChangeCommandNode implements CommandNode {
 
     @Override
     public void update(StatefulCommandGraph graph, PapyrusBot bot) {
+        LOG.debug("changing state to: " + this.newStateName);
         graph.setState(this.newStateName);
     }
 
@@ -28,7 +33,7 @@ public class StateChangeCommandNode implements CommandNode {
 
     @Override
     public CommandNodeState getState() {
-        return CommandNodeState.SUCCESS;
+        return CommandNodeState.PENDING;
     }
 
 }

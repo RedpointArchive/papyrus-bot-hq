@@ -2,9 +2,13 @@ package games.redpoint.commands;
 
 import com.nukkitx.protocol.bedrock.packet.CommandOutputPacket;
 
+import org.apache.log4j.Logger;
+
 import games.redpoint.PapyrusBot;
 
 public class ConditionalCommandNode implements CommandNode {
+    private static final Logger LOG = Logger.getLogger(ConditionalCommandNode.class);
+
     private CommandNode condition;
     private CommandNode onFailed;
     private CommandNode onSuccess;
@@ -33,6 +37,7 @@ public class ConditionalCommandNode implements CommandNode {
 
     @Override
     public void reset() {
+        LOG.debug("resetting to condition");
         this.current = this.condition;
         if (this.condition != null) {
             this.condition.reset();
@@ -62,15 +67,19 @@ public class ConditionalCommandNode implements CommandNode {
                 break;
             case SUCCESS:
                 if (this.onDone != null) {
+                    LOG.debug("on success: switching to done node");
                     this.current = this.onDone;
                 } else {
+                    LOG.debug("on success: switching to success node");
                     this.current = this.onSuccess;
                 }
                 break;
             case FAILED:
                 if (this.onDone != null) {
+                    LOG.debug("on failed: switching to done node");
                     this.current = this.onDone;
                 } else {
+                    LOG.debug("on failed: switching to failed node");
                     this.current = this.onFailed;
                 }
                 break;

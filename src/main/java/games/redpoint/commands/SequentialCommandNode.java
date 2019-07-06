@@ -2,9 +2,13 @@ package games.redpoint.commands;
 
 import com.nukkitx.protocol.bedrock.packet.CommandOutputPacket;
 
+import org.apache.log4j.Logger;
+
 import games.redpoint.PapyrusBot;
 
 public class SequentialCommandNode implements CommandNode {
+    private static final Logger LOG = Logger.getLogger(ConditionalCommandNode.class);
+
     private CommandNodeState currentState;
     private DelegatingCommandNode doneOnFailedNode;
     private DelegatingCommandNode doneOnSuccessNode;
@@ -14,10 +18,12 @@ public class SequentialCommandNode implements CommandNode {
     public SequentialCommandNode() {
         this.currentState = CommandNodeState.PENDING;
         this.doneOnFailedNode = new DelegatingCommandNode((StatefulCommandGraph graph, PapyrusBot bot) -> {
+            LOG.debug("sequential command node failed");
             this.currentState = CommandNodeState.FAILED;
             return this.currentState;
         });
         this.doneOnSuccessNode = new DelegatingCommandNode((StatefulCommandGraph graph, PapyrusBot bot) -> {
+            LOG.debug("sequential command node success");
             this.currentState = CommandNodeState.SUCCESS;
             return this.currentState;
         });

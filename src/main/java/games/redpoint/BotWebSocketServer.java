@@ -7,11 +7,14 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.flowpowered.math.vector.Vector3f;
 import com.nukkitx.protocol.bedrock.packet.PlayerListPacket;
 
+import org.apache.log4j.Logger;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
 
 public class BotWebSocketServer extends WebSocketServer {
+    private static final Logger LOG = Logger.getLogger(BotWebSocketServer.class);
+
     private PapyrusBot bot;
 
     public BotWebSocketServer(PapyrusBot bot) throws UnknownHostException {
@@ -22,22 +25,22 @@ public class BotWebSocketServer extends WebSocketServer {
 
     @Override
     public void onClose(WebSocket conn, int code, String reason, boolean remote) {
-        System.out.println("Got WebSocket close");
+        LOG.debug("Got WebSocket close");
     }
 
     @Override
     public void onError(WebSocket conn, Exception ex) {
-        System.out.println("Got WebSocket exception: " + ex.toString());
+        LOG.debug("Got WebSocket exception: " + ex.toString());
     }
 
     @Override
     public void onMessage(WebSocket conn, String message) {
-        System.out.println("Got WebSocket message: " + message);
+        LOG.debug("Got WebSocket message: " + message);
     }
 
     @Override
     public void onOpen(WebSocket conn, ClientHandshake handshake) {
-        System.out.println("Got WebSocket open");
+        LOG.info("WebSocket connection opened from " + conn.getRemoteSocketAddress().toString());
 
         for (PlayerListPacket.Entry entry : this.bot.players.values()) {
             if (this.bot.knownPlayerPositions.containsKey(entry.getUuid().toString())) {
@@ -57,6 +60,6 @@ public class BotWebSocketServer extends WebSocketServer {
 
     @Override
     public void onStart() {
-        System.out.println("WebSocket server is listening on port 8080");
+        LOG.info("WebSocket server is listening on port 8080");
     }
 }

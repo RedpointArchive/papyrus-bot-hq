@@ -39,6 +39,8 @@ import com.nukkitx.protocol.bedrock.packet.ServerToClientHandshakePacket;
 import com.nukkitx.protocol.bedrock.packet.TextPacket;
 import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
 
+import org.apache.log4j.Logger;
+
 import games.redpoint.commands.CommandNode.CommandNodeState;
 import games.redpoint.commands.ConditionalCommandNode;
 import games.redpoint.commands.DelegatingCommandNode;
@@ -52,6 +54,8 @@ import games.redpoint.commands.StateChangeCommandNode;
 import games.redpoint.commands.StatefulCommandGraph;
 
 public class PapyrusBot implements BedrockPacketHandler {
+    private static final Logger LOG = Logger.getLogger(PapyrusBot.class);
+
     public final BedrockClientSession session;
     private final KeyPair proxyKeyPair;
     public final HashMap<String, PlayerListPacket.Entry> players;
@@ -89,7 +93,7 @@ public class PapyrusBot implements BedrockPacketHandler {
                                 .add(new ExecuteCommandNode("effect @s invisibility 99999 255 true",
                                         RetryPolicy.ALWAYS_RETRY)))
                         .add(new ExecuteCommandNode("scoreboard objectives add dimension dummy \"Current Dimension\"",
-                                RetryPolicy.NO_RETRY))
+                                RetryPolicy.IGNORE_ERRORS))
                         .add(new StateChangeCommandNode("waiting-for-out-of-date-player")));
 
         this.commandGraph.add("waiting-for-out-of-date-player",
@@ -106,8 +110,7 @@ public class PapyrusBot implements BedrockPacketHandler {
                         }
 
                         if (!this.lastUpdatedTime.containsKey(u)) {
-                            System.out.println(
-                                    "Need to update known location of " + entry.getName() + ", no known location");
+                            LOG.debug("Need to update known location of " + entry.getName() + ", no known location");
 
                             this.currentFocusedPlayer = u;
                             return CommandNodeState.SUCCESS;
@@ -115,8 +118,7 @@ public class PapyrusBot implements BedrockPacketHandler {
 
                         // older than 60 seconds?
                         if (this.lastUpdatedTime.get(u) + (60 * 1000) < now) {
-                            System.out.println(
-                                    "Need to update known location of " + entry.getName() + ", location too old");
+                            LOG.debug("Need to update known location of " + entry.getName() + ", location too old");
 
                             this.currentFocusedPlayer = u;
                             return CommandNodeState.SUCCESS;
@@ -134,11 +136,11 @@ public class PapyrusBot implements BedrockPacketHandler {
                             .add(new ExecuteCommandNode(
                                     "execute \"" + name + "\" ~ ~ ~ detect 0 0 0 bedrock 0 /scoreboard players set \""
                                             + name + "\" dimension 0",
-                                    RetryPolicy.NO_RETRY))
+                                    RetryPolicy.ALWAYS_RETRY))
                             .add(new ExecuteCommandNode(
                                     "execute \"" + name + "\" ~ ~ ~ detect 0 127 0 bedrock 0 /scoreboard players set \""
                                             + name + "\" dimension 1",
-                                    RetryPolicy.NO_RETRY))
+                                    RetryPolicy.IGNORE_ERRORS))
                             .add(new ConditionalCommandNode(new ExecuteCommandNode(
                                     "scoreboard players test \"" + name + "\" dimension 0 0", RetryPolicy.NO_RETRY))
                                             .onSuccess(new StateChangeCommandNode("teleport"))
@@ -158,11 +160,13 @@ public class PapyrusBot implements BedrockPacketHandler {
 
         this.commandGraph.add("teleport", new FactoryCommandNode((StatefulCommandGraph graph, PapyrusBot bot) -> {
             PlayerListPacket.Entry playerEntry = this.players.get(this.currentFocusedPlayer);
-            System.out.println("Requesting teleport to " + playerEntry.getName() + "...");
+            LOG.info("Requesting teleport to " + playerEntry.getName() + "...");
             return new SequentialCommandNode().add(new ExecuteCommandNode(
-                    "execute \"" + playerEntry.getName() + "\" ~ ~ ~ detect ~ 127 ~ bedrock 0 tp Papyrus ~ ~ ~",
+                    "execute \"" + playerEntry.getName() + "\" ~ ~ ~ detect 0 0 0 bedrock 0 tp Papyrus ~ ~ ~",
                     RetryPolicy.ALWAYS_RETRY));
         }));
+
+        this.commandGraph.setState("init");
 
         this.webSocketServer.start();
     }
@@ -211,13 +215,13 @@ public class PapyrusBot implements BedrockPacketHandler {
 
     @Override
     public boolean handle(DisconnectPacket packet) {
-        System.out.println("Disconnected, reason: " + packet.getKickMessage());
+        LOG.info("Disconnected, reason: " + packet.getKickMessage());
         return false;
     }
 
     @Override
     public boolean handle(AddEntityPacket packet) {
-        System.out.println("Add entity: " + packet.getIdentifier());
+        LOG.debug("Add entity: " + packet.getIdentifier());
         return false;
     }
 
@@ -242,7 +246,7 @@ public class PapyrusBot implements BedrockPacketHandler {
         try {
             this.webSocketServer.broadcast(this.objectMapper.writeValueAsString(msg));
         } catch (JsonProcessingException e) {
-            System.out.println(e.toString());
+            LOG.error(e.toString());
         }
 
         if (playerUuid.equals(this.currentFocusedPlayer)) {
@@ -266,7 +270,7 @@ public class PapyrusBot implements BedrockPacketHandler {
         try {
             this.webSocketServer.broadcast(this.objectMapper.writeValueAsString(msg));
         } catch (JsonProcessingException e) {
-            System.out.println(e.toString());
+            LOG.error(e.toString());
         }
 
         if (packet.getUuid().toString().equals(this.currentFocusedPlayer)) {
@@ -279,7 +283,7 @@ public class PapyrusBot implements BedrockPacketHandler {
     @Override
     public boolean handle(RespawnPacket packet) {
 
-        System.out.println("Respawn packet: " + packet.toString());
+        LOG.info("Papyrus bot is now connected and in the game");
         RequestChunkRadiusPacket packe2t = new RequestChunkRadiusPacket();
         packe2t.setRadius(64);
         session.sendPacketImmediately(packe2t);
@@ -325,7 +329,7 @@ public class PapyrusBot implements BedrockPacketHandler {
         try {
             this.webSocketServer.broadcast(this.objectMapper.writeValueAsString(msg));
         } catch (JsonProcessingException e) {
-            System.out.println(e.toString());
+            LOG.error(e.toString());
         }
 
         return false;

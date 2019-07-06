@@ -7,9 +7,13 @@ import com.nukkitx.protocol.bedrock.data.CommandOriginData.Origin;
 import com.nukkitx.protocol.bedrock.packet.CommandOutputPacket;
 import com.nukkitx.protocol.bedrock.packet.CommandRequestPacket;
 
+import org.apache.log4j.Logger;
+
 import games.redpoint.PapyrusBot;
 
 public class ExecuteCommandNode implements CommandNode {
+    private static final Logger LOG = Logger.getLogger(ExecuteCommandNode.class);
+
     private String command;
     private UUID currentCommandId;
     private boolean hasCurrentCommand;
@@ -18,7 +22,7 @@ public class ExecuteCommandNode implements CommandNode {
     public RetryPolicy policy = RetryPolicy.NO_RETRY;
 
     public enum RetryPolicy {
-        NO_RETRY, ALWAYS_RETRY
+        NO_RETRY, ALWAYS_RETRY, IGNORE_ERRORS
     }
 
     public ExecuteCommandNode(String command, RetryPolicy policy) {
@@ -44,6 +48,9 @@ public class ExecuteCommandNode implements CommandNode {
             case NO_RETRY:
                 shouldSend = !this.isDone;
                 break;
+            case IGNORE_ERRORS:
+                shouldSend = !this.isDone;
+                break;
             case ALWAYS_RETRY:
                 shouldSend = !this.isSuccess;
                 break;
@@ -52,6 +59,8 @@ public class ExecuteCommandNode implements CommandNode {
 
         if (shouldSend) {
             currentCommandId = UUID.randomUUID();
+
+            LOG.debug("sending: " + command);
 
             CommandRequestPacket cmdPacket = new CommandRequestPacket();
             cmdPacket.setCommand(command);
@@ -68,8 +77,10 @@ public class ExecuteCommandNode implements CommandNode {
             this.isDone = true;
             this.hasCurrentCommand = false;
             if (packet.getSuccessCount() > 0) {
-                System.out.println("successfully ran: " + command);
+                LOG.info("command success: " + command);
                 this.isSuccess = true;
+            } else {
+                LOG.info("command failed: " + command);
             }
         }
     }
@@ -86,6 +97,8 @@ public class ExecuteCommandNode implements CommandNode {
             } else {
                 return CommandNodeState.FAILED;
             }
+        case IGNORE_ERRORS:
+            return CommandNodeState.SUCCESS;
         case ALWAYS_RETRY:
             if (this.isSuccess) {
                 return CommandNodeState.SUCCESS;
