@@ -18,6 +18,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flowpowered.math.vector.Vector3f;
+import com.flowpowered.math.vector.Vector3i;
 import com.nimbusds.jwt.SignedJWT;
 import com.nukkitx.protocol.bedrock.BedrockClientSession;
 import com.nukkitx.protocol.bedrock.handler.BedrockPacketHandler;
@@ -26,8 +27,10 @@ import com.nukkitx.protocol.bedrock.packet.AddPlayerPacket;
 import com.nukkitx.protocol.bedrock.packet.ClientToServerHandshakePacket;
 import com.nukkitx.protocol.bedrock.packet.CommandOutputPacket;
 import com.nukkitx.protocol.bedrock.packet.DisconnectPacket;
+import com.nukkitx.protocol.bedrock.packet.InteractPacket;
 import com.nukkitx.protocol.bedrock.packet.MovePlayerPacket;
 import com.nukkitx.protocol.bedrock.packet.NetworkStackLatencyPacket;
+import com.nukkitx.protocol.bedrock.packet.PlayerActionPacket;
 import com.nukkitx.protocol.bedrock.packet.PlayerListPacket;
 import com.nukkitx.protocol.bedrock.packet.RequestChunkRadiusPacket;
 import com.nukkitx.protocol.bedrock.packet.ResourcePackClientResponsePacket;
@@ -37,6 +40,8 @@ import com.nukkitx.protocol.bedrock.packet.ResourcePacksInfoPacket;
 import com.nukkitx.protocol.bedrock.packet.RespawnPacket;
 import com.nukkitx.protocol.bedrock.packet.ServerToClientHandshakePacket;
 import com.nukkitx.protocol.bedrock.packet.TextPacket;
+import com.nukkitx.protocol.bedrock.packet.UpdateBlockPacket;
+import com.nukkitx.protocol.bedrock.packet.PlayerActionPacket.Action;
 import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
 
 import org.apache.log4j.Logger;
@@ -50,6 +55,7 @@ import games.redpoint.commands.FactoryCommandNode;
 import games.redpoint.commands.ParallelCommandNode;
 import games.redpoint.commands.ParallelCommandNode.ParallelSuccessState;
 import games.redpoint.commands.SequentialCommandNode;
+import games.redpoint.commands.SetBlockCommandNode;
 import games.redpoint.commands.StateChangeCommandNode;
 import games.redpoint.commands.StatefulCommandGraph;
 
@@ -69,6 +75,7 @@ public class PapyrusBot implements BedrockPacketHandler {
     public ObjectMapper objectMapper;
     private boolean updateCommandGraph;
     private StatefulCommandGraph commandGraph;
+    private int bedRuntimeEntityId = 0;
 
     public PapyrusBot(BedrockClientSession session, KeyPair proxyKeyPair) throws UnknownHostException {
         this.session = session;
@@ -87,14 +94,73 @@ public class PapyrusBot implements BedrockPacketHandler {
         this.commandGraph = new StatefulCommandGraph();
 
         this.commandGraph.add("init",
-                new SequentialCommandNode()
-                        .add(new ParallelCommandNode(ParallelSuccessState.ALL_SUCCESS)
-                                .add(new ExecuteCommandNode("gamemode creative @s", RetryPolicy.ALWAYS_RETRY))
-                                .add(new ExecuteCommandNode("effect @s invisibility 99999 255 true",
-                                        RetryPolicy.ALWAYS_RETRY)))
-                        .add(new ExecuteCommandNode("scoreboard objectives add dimension dummy \"Current Dimension\"",
-                                RetryPolicy.IGNORE_ERRORS))
-                        .add(new StateChangeCommandNode("waiting-for-out-of-date-player")));
+                new SequentialCommandNode().add(new ParallelCommandNode(ParallelSuccessState.ALL_SUCCESS)
+                        .add(new ExecuteCommandNode("gamemode creative @s", RetryPolicy.ALWAYS_RETRY))
+                // .add(new ExecuteCommandNode("effect @s invisibility 99999 255 true",
+                // RetryPolicy.ALWAYS_RETRY))
+                ).add(new ExecuteCommandNode("scoreboard objectives add dimension dummy \"Current Dimension\"",
+                        RetryPolicy.IGNORE_ERRORS)).add(new StateChangeCommandNode("setup-bed")));
+
+        this.commandGraph.add("setup-bed",
+                new SequentialCommandNode().add(new SetBlockCommandNode(new Vector3i(200, 0, 200), "air"))
+                        .add(new SetBlockCommandNode(new Vector3i(200, 0, 199), "air"))
+                        .add(new SetBlockCommandNode(new Vector3i(201, 0, 200), "air"))
+                        .add(new SetBlockCommandNode(new Vector3i(201, 0, 199), "air"))
+                        .add(new SetBlockCommandNode(new Vector3i(200, 1, 200), "air"))
+                        .add(new SetBlockCommandNode(new Vector3i(200, 1, 199), "air"))
+                        .add(new SetBlockCommandNode(new Vector3i(201, 1, 200), "air"))
+                        .add(new SetBlockCommandNode(new Vector3i(201, 1, 199), "air"))
+                        .add(new SetBlockCommandNode(new Vector3i(200, 2, 200), "bedrock"))
+                        .add(new SetBlockCommandNode(new Vector3i(200, 2, 199), "bedrock"))
+                        .add(new SetBlockCommandNode(new Vector3i(201, 2, 200), "bedrock"))
+                        .add(new SetBlockCommandNode(new Vector3i(201, 2, 199), "bedrock"))
+                        .add(new SetBlockCommandNode(new Vector3i(199, 0, 200), "bedrock"))
+                        .add(new SetBlockCommandNode(new Vector3i(199, 0, 199), "bedrock"))
+                        .add(new SetBlockCommandNode(new Vector3i(202, 0, 200), "bedrock"))
+                        .add(new SetBlockCommandNode(new Vector3i(202, 0, 199), "bedrock"))
+                        .add(new SetBlockCommandNode(new Vector3i(200, 0, 201), "bedrock"))
+                        .add(new SetBlockCommandNode(new Vector3i(200, 0, 198), "bedrock"))
+                        .add(new SetBlockCommandNode(new Vector3i(201, 0, 201), "bedrock"))
+                        .add(new SetBlockCommandNode(new Vector3i(201, 0, 198), "bedrock"))
+                        .add(new SetBlockCommandNode(new Vector3i(199, 1, 200), "bedrock"))
+                        .add(new SetBlockCommandNode(new Vector3i(199, 1, 199), "bedrock"))
+                        .add(new SetBlockCommandNode(new Vector3i(202, 1, 200), "bedrock"))
+                        .add(new SetBlockCommandNode(new Vector3i(202, 1, 199), "bedrock"))
+                        .add(new SetBlockCommandNode(new Vector3i(200, 1, 201), "bedrock"))
+                        .add(new SetBlockCommandNode(new Vector3i(200, 1, 198), "bedrock"))
+                        .add(new SetBlockCommandNode(new Vector3i(201, 1, 201), "bedrock"))
+                        .add(new SetBlockCommandNode(new Vector3i(201, 1, 198), "bedrock"))
+                        .add(new SetBlockCommandNode(new Vector3i(200, 0, 200), "bed"))
+                        .add(new SetBlockCommandNode(new Vector3i(200, 1, 199), "torch"))
+                        .add(new DelegatingCommandNode((StatefulCommandGraph graph, PapyrusBot bot) -> {
+                            if (this.bedRuntimeEntityId == 0) {
+                                return CommandNodeState.PENDING;
+                            }
+                            return CommandNodeState.SUCCESS;
+                        })).add(new StateChangeCommandNode("sleep")));
+
+        this.commandGraph.add("sleep",
+                new SequentialCommandNode().add(new ExecuteCommandNode("time set midnight", RetryPolicy.ALWAYS_RETRY))
+                        .add(new ExecuteCommandNode("tp @s 201 0 199 90 45", RetryPolicy.ALWAYS_RETRY))
+                        .add(new DelegatingCommandNode((StatefulCommandGraph graph, PapyrusBot bot) -> {
+                            LOG.info("Sending player action packet");
+                            PlayerActionPacket packet = new PlayerActionPacket();
+                            packet.setRuntimeEntityId(this.bedRuntimeEntityId);
+                            packet.setBlockPosition(new Vector3i(200, 0, 200));
+                            packet.setAction(Action.START_SLEEP);
+                            session.sendPacketImmediately(packet);
+
+                            LOG.info("Sending interact packet");
+                            InteractPacket packet2 = new InteractPacket();
+                            packet2.setRuntimeEntityId(this.bedRuntimeEntityId);
+                            packet2.setMousePosition(new Vector3f(200, 0, 200));
+                            packet2.setAction(2);
+                            session.sendPacketImmediately(packet2);
+
+                            return CommandNodeState.SUCCESS;
+                        })));/*
+                              * .add(new StateChangeCommandNode("waiting-for-out-of-date-player")))
+                              */
 
         this.commandGraph.add("waiting-for-out-of-date-player",
                 new ConditionalCommandNode(new DelegatingCommandNode((StatefulCommandGraph graph, PapyrusBot bot) -> {
@@ -110,7 +176,7 @@ public class PapyrusBot implements BedrockPacketHandler {
                         }
 
                         if (!this.lastUpdatedTime.containsKey(u)) {
-                            LOG.debug("Need to update known location of " + entry.getName() + ", no known location");
+                            LOG.info("Need to update known location of " + entry.getName() + ", no known location");
 
                             this.currentFocusedPlayer = u;
                             return CommandNodeState.SUCCESS;
@@ -118,7 +184,7 @@ public class PapyrusBot implements BedrockPacketHandler {
 
                         // older than 60 seconds?
                         if (this.lastUpdatedTime.get(u) + (60 * 1000) < now) {
-                            LOG.debug("Need to update known location of " + entry.getName() + ", location too old");
+                            LOG.info("Need to update known location of " + entry.getName() + ", location too old");
 
                             this.currentFocusedPlayer = u;
                             return CommandNodeState.SUCCESS;
@@ -160,7 +226,7 @@ public class PapyrusBot implements BedrockPacketHandler {
 
         this.commandGraph.add("teleport", new FactoryCommandNode((StatefulCommandGraph graph, PapyrusBot bot) -> {
             PlayerListPacket.Entry playerEntry = this.players.get(this.currentFocusedPlayer);
-            LOG.info("Requesting teleport to " + playerEntry.getName() + "...");
+            LOG.warn("Requesting teleport to " + playerEntry.getName() + "...");
             return new SequentialCommandNode().add(new ExecuteCommandNode(
                     "execute \"" + playerEntry.getName() + "\" ~ ~ ~ detect 0 0 0 bedrock 0 tp Papyrus ~ ~ ~",
                     RetryPolicy.ALWAYS_RETRY));
@@ -190,6 +256,17 @@ public class PapyrusBot implements BedrockPacketHandler {
     }
 
     @Override
+    public boolean handle(UpdateBlockPacket packet) {
+        if (packet.getBlockPosition().getX() == 200 && packet.getBlockPosition().getY() == 0
+                && packet.getBlockPosition().getZ() == 200) {
+            LOG.warn("Found bed, it's runtime entity ID is " + this.bedRuntimeEntityId);
+            this.bedRuntimeEntityId = packet.getRuntimeId();
+            return true;
+        }
+        return false;
+    }
+
+    @Override
     public boolean handle(ResourcePacksInfoPacket packet) {
         ResourcePackClientResponsePacket resourcePackClientResponse = new ResourcePackClientResponsePacket();
         resourcePackClientResponse.setStatus(Status.HAVE_ALL_PACKS);
@@ -215,13 +292,13 @@ public class PapyrusBot implements BedrockPacketHandler {
 
     @Override
     public boolean handle(DisconnectPacket packet) {
-        LOG.info("Disconnected, reason: " + packet.getKickMessage());
+        LOG.warn("Disconnected, reason: " + packet.getKickMessage());
         return false;
     }
 
     @Override
     public boolean handle(AddEntityPacket packet) {
-        LOG.debug("Add entity: " + packet.getIdentifier());
+        LOG.info("Add entity: " + packet.getIdentifier());
         return false;
     }
 
@@ -283,7 +360,7 @@ public class PapyrusBot implements BedrockPacketHandler {
     @Override
     public boolean handle(RespawnPacket packet) {
 
-        LOG.info("Papyrus bot is now connected and in the game");
+        LOG.warn("Papyrus bot is now connected and in the game");
         RequestChunkRadiusPacket packe2t = new RequestChunkRadiusPacket();
         packe2t.setRadius(64);
         session.sendPacketImmediately(packe2t);

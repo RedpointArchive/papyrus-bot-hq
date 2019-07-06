@@ -18,12 +18,12 @@ public class SequentialCommandNode implements CommandNode {
     public SequentialCommandNode() {
         this.currentState = CommandNodeState.PENDING;
         this.doneOnFailedNode = new DelegatingCommandNode((StatefulCommandGraph graph, PapyrusBot bot) -> {
-            LOG.debug("sequential command node failed");
+            LOG.info("sequential command node failed");
             this.currentState = CommandNodeState.FAILED;
             return this.currentState;
         });
         this.doneOnSuccessNode = new DelegatingCommandNode((StatefulCommandGraph graph, PapyrusBot bot) -> {
-            LOG.debug("sequential command node success");
+            LOG.info("sequential command node success");
             this.currentState = CommandNodeState.SUCCESS;
             return this.currentState;
         });

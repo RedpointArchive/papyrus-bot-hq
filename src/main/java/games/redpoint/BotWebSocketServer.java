@@ -25,22 +25,22 @@ public class BotWebSocketServer extends WebSocketServer {
 
     @Override
     public void onClose(WebSocket conn, int code, String reason, boolean remote) {
-        LOG.debug("Got WebSocket close");
+        LOG.info("Got WebSocket close");
     }
 
     @Override
     public void onError(WebSocket conn, Exception ex) {
-        LOG.debug("Got WebSocket exception: " + ex.toString());
+        LOG.info("Got WebSocket exception: " + ex.toString());
     }
 
     @Override
     public void onMessage(WebSocket conn, String message) {
-        LOG.debug("Got WebSocket message: " + message);
+        LOG.info("Got WebSocket message: " + message);
     }
 
     @Override
     public void onOpen(WebSocket conn, ClientHandshake handshake) {
-        LOG.info("WebSocket connection opened from " + conn.getRemoteSocketAddress().toString());
+        LOG.warn("WebSocket connection opened from " + conn.getRemoteSocketAddress().toString());
 
         for (PlayerListPacket.Entry entry : this.bot.players.values()) {
             if (this.bot.knownPlayerPositions.containsKey(entry.getUuid().toString())) {
@@ -60,6 +60,6 @@ public class BotWebSocketServer extends WebSocketServer {
 
     @Override
     public void onStart() {
-        LOG.info("WebSocket server is listening on port 8080");
+        LOG.warn("WebSocket server is listening on port 8080");
     }
 }

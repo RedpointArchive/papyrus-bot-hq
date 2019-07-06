@@ -22,7 +22,7 @@ public class StateChangeCommandNode implements CommandNode {
 
     @Override
     public void update(StatefulCommandGraph graph, PapyrusBot bot) {
-        LOG.debug("changing state to: " + this.newStateName);
+        LOG.info("changing state to: " + this.newStateName);
         graph.setState(this.newStateName);
     }
 

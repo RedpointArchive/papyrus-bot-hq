@@ -28,7 +28,7 @@ public class StatefulCommandGraph {
         if (this.currentNode != null) {
             this.currentNode.reset();
         }
-        LOG.debug("command graph is changing state to: " + name);
+        LOG.info("command graph is changing state to: " + name);
         this.currentNode = this.states.get(name);
         return this;
     }

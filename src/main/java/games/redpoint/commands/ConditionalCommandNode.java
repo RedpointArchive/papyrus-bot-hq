@@ -37,7 +37,7 @@ public class ConditionalCommandNode implements CommandNode {
 
     @Override
     public void reset() {
-        LOG.debug("resetting to condition");
+        LOG.info("resetting to condition");
         this.current = this.condition;
         if (this.condition != null) {
             this.condition.reset();
@@ -67,19 +67,19 @@ public class ConditionalCommandNode implements CommandNode {
                 break;
             case SUCCESS:
                 if (this.onDone != null) {
-                    LOG.debug("on success: switching to done node");
+                    LOG.info("on success: switching to done node");
                     this.current = this.onDone;
                 } else {
-                    LOG.debug("on success: switching to success node");
+                    LOG.info("on success: switching to success node");
                     this.current = this.onSuccess;
                 }
                 break;
             case FAILED:
                 if (this.onDone != null) {
-                    LOG.debug("on failed: switching to done node");
+                    LOG.info("on failed: switching to done node");
                     this.current = this.onDone;
                 } else {
-                    LOG.debug("on failed: switching to failed node");
+                    LOG.info("on failed: switching to failed node");
                     this.current = this.onFailed;
                 }
                 break;
