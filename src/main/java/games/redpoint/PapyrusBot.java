@@ -20,27 +20,36 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flowpowered.math.vector.Vector3f;
 import com.nimbusds.jwt.SignedJWT;
 import com.nukkitx.protocol.bedrock.BedrockClientSession;
-import com.nukkitx.protocol.bedrock.data.CommandOriginData;
-import com.nukkitx.protocol.bedrock.data.CommandOriginData.Origin;
 import com.nukkitx.protocol.bedrock.handler.BedrockPacketHandler;
 import com.nukkitx.protocol.bedrock.packet.AddEntityPacket;
 import com.nukkitx.protocol.bedrock.packet.AddPlayerPacket;
 import com.nukkitx.protocol.bedrock.packet.ClientToServerHandshakePacket;
 import com.nukkitx.protocol.bedrock.packet.CommandOutputPacket;
-import com.nukkitx.protocol.bedrock.packet.CommandRequestPacket;
 import com.nukkitx.protocol.bedrock.packet.DisconnectPacket;
 import com.nukkitx.protocol.bedrock.packet.MovePlayerPacket;
 import com.nukkitx.protocol.bedrock.packet.NetworkStackLatencyPacket;
 import com.nukkitx.protocol.bedrock.packet.PlayerListPacket;
 import com.nukkitx.protocol.bedrock.packet.RequestChunkRadiusPacket;
 import com.nukkitx.protocol.bedrock.packet.ResourcePackClientResponsePacket;
+import com.nukkitx.protocol.bedrock.packet.ResourcePackClientResponsePacket.Status;
 import com.nukkitx.protocol.bedrock.packet.ResourcePackStackPacket;
 import com.nukkitx.protocol.bedrock.packet.ResourcePacksInfoPacket;
 import com.nukkitx.protocol.bedrock.packet.RespawnPacket;
 import com.nukkitx.protocol.bedrock.packet.ServerToClientHandshakePacket;
 import com.nukkitx.protocol.bedrock.packet.TextPacket;
-import com.nukkitx.protocol.bedrock.packet.ResourcePackClientResponsePacket.Status;
 import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
+
+import games.redpoint.commands.CommandNode.CommandNodeState;
+import games.redpoint.commands.ConditionalCommandNode;
+import games.redpoint.commands.DelegatingCommandNode;
+import games.redpoint.commands.ExecuteCommandNode;
+import games.redpoint.commands.ExecuteCommandNode.RetryPolicy;
+import games.redpoint.commands.FactoryCommandNode;
+import games.redpoint.commands.ParallelCommandNode;
+import games.redpoint.commands.ParallelCommandNode.ParallelSuccessState;
+import games.redpoint.commands.SequentialCommandNode;
+import games.redpoint.commands.StateChangeCommandNode;
+import games.redpoint.commands.StatefulCommandGraph;
 
 public class PapyrusBot implements BedrockPacketHandler {
     public final BedrockClientSession session;
@@ -48,22 +57,14 @@ public class PapyrusBot implements BedrockPacketHandler {
     public final HashMap<String, PlayerListPacket.Entry> players;
     private String currentFocusedPlayer;
     public final HashMap<String, Vector3f> knownPlayerPositions;
-    private State currentState;
     private final HashMap<Long, String> runtimePlayerLookup;
     private final HashMap<String, Long> lastUpdatedTime;
-    private int teleportTimeout = 0;
     public UUID botUuid;
     private boolean seenBot;
-    private CommandManager gameModeCommand;
-    private CommandManager invisibilityCommand;
-    private boolean updateCommands;
     private BotWebSocketServer webSocketServer;
     public ObjectMapper objectMapper;
-    private int lastDeopedWarningTime = 0;
-
-    private enum State {
-        WAITING_FOR_OUT_OF_DATE_PLAYER, SEND_TELEPORT, WAIT_FOR_POSITION,
-    }
+    private boolean updateCommandGraph;
+    private StatefulCommandGraph commandGraph;
 
     public PapyrusBot(BedrockClientSession session, KeyPair proxyKeyPair) throws UnknownHostException {
         this.session = session;
@@ -72,19 +73,98 @@ public class PapyrusBot implements BedrockPacketHandler {
         this.currentFocusedPlayer = null;
         this.knownPlayerPositions = new HashMap<String, Vector3f>();
         this.runtimePlayerLookup = new HashMap<Long, String>();
-        this.currentState = State.WAITING_FOR_OUT_OF_DATE_PLAYER;
-        this.teleportTimeout = 0;
         this.botUuid = new UUID(0, 0);
         this.seenBot = false;
-        this.updateCommands = false;
         this.lastUpdatedTime = new HashMap<String, Long>();
         this.webSocketServer = new BotWebSocketServer(this);
         this.objectMapper = new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
 
-        this.webSocketServer.start();
+        this.updateCommandGraph = false;
+        this.commandGraph = new StatefulCommandGraph();
 
-        this.gameModeCommand = new CommandManager("gamemode creative @s");
-        this.invisibilityCommand = new CommandManager("effect @s invisibility 99999 255 true");
+        this.commandGraph.add("init",
+                new SequentialCommandNode()
+                        .add(new ParallelCommandNode(ParallelSuccessState.ALL_SUCCESS)
+                                .add(new ExecuteCommandNode("gamemode creative @s", RetryPolicy.ALWAYS_RETRY))
+                                .add(new ExecuteCommandNode("effect @s invisibility 99999 255 true",
+                                        RetryPolicy.ALWAYS_RETRY)))
+                        .add(new ExecuteCommandNode("scoreboard objectives add dimension dummy \"Current Dimension\"",
+                                RetryPolicy.NO_RETRY))
+                        .add(new StateChangeCommandNode("waiting-for-out-of-date-player")));
+
+        this.commandGraph.add("waiting-for-out-of-date-player",
+                new ConditionalCommandNode(new DelegatingCommandNode((StatefulCommandGraph graph, PapyrusBot bot) -> {
+                    // Find the first player that is out of date.
+                    long now = System.currentTimeMillis();
+
+                    for (PlayerListPacket.Entry entry : this.players.values()) {
+                        String u = entry.getUuid().toString();
+
+                        if (u.equals(this.botUuid.toString())) {
+                            // Exclude bot
+                            continue;
+                        }
+
+                        if (!this.lastUpdatedTime.containsKey(u)) {
+                            System.out.println(
+                                    "Need to update known location of " + entry.getName() + ", no known location");
+
+                            this.currentFocusedPlayer = u;
+                            return CommandNodeState.SUCCESS;
+                        }
+
+                        // older than 60 seconds?
+                        if (this.lastUpdatedTime.get(u) + (60 * 1000) < now) {
+                            System.out.println(
+                                    "Need to update known location of " + entry.getName() + ", location too old");
+
+                            this.currentFocusedPlayer = u;
+                            return CommandNodeState.SUCCESS;
+                        }
+                    }
+
+                    return CommandNodeState.PENDING;
+                })).onSuccess(new StateChangeCommandNode("check-dimension")));
+
+        this.commandGraph.add("check-dimension",
+                new FactoryCommandNode((StatefulCommandGraph graph, PapyrusBot bot) -> {
+                    PlayerListPacket.Entry playerEntry = this.players.get(this.currentFocusedPlayer);
+                    String name = playerEntry.getName();
+                    return new SequentialCommandNode()
+                            .add(new ExecuteCommandNode(
+                                    "execute \"" + name + "\" ~ ~ ~ detect 0 0 0 bedrock 0 /scoreboard players set \""
+                                            + name + "\" dimension 0",
+                                    RetryPolicy.NO_RETRY))
+                            .add(new ExecuteCommandNode(
+                                    "execute \"" + name + "\" ~ ~ ~ detect 0 127 0 bedrock 0 /scoreboard players set \""
+                                            + name + "\" dimension 1",
+                                    RetryPolicy.NO_RETRY))
+                            .add(new ConditionalCommandNode(new ExecuteCommandNode(
+                                    "scoreboard players test \"" + name + "\" dimension 0 0", RetryPolicy.NO_RETRY))
+                                            .onSuccess(new StateChangeCommandNode("teleport"))
+                                            .onFailed(new SequentialCommandNode().add(new DelegatingCommandNode(
+                                                    (StatefulCommandGraph graph1, PapyrusBot bot1) -> {
+                                                        // we can't teleport to this player because they're in the
+                                                        // nether
+                                                        this.knownPlayerPositions.put(playerEntry.getUuid().toString(),
+                                                                new Vector3f(0, 0, 0));
+                                                        this.lastUpdatedTime.put(playerEntry.getUuid().toString(),
+                                                                System.currentTimeMillis());
+                                                        return CommandNodeState.SUCCESS;
+
+                                                    })).add(new StateChangeCommandNode(
+                                                            "waiting-for-out-of-date-player"))));
+                }));
+
+        this.commandGraph.add("teleport", new FactoryCommandNode((StatefulCommandGraph graph, PapyrusBot bot) -> {
+            PlayerListPacket.Entry playerEntry = this.players.get(this.currentFocusedPlayer);
+            System.out.println("Requesting teleport to " + playerEntry.getName() + "...");
+            return new SequentialCommandNode().add(new ExecuteCommandNode(
+                    "execute \"" + playerEntry.getName() + "\" ~ ~ ~ detect ~ 127 ~ bedrock 0 tp Papyrus ~ ~ ~",
+                    RetryPolicy.ALWAYS_RETRY));
+        }));
+
+        this.webSocketServer.start();
     }
 
     @Override
@@ -166,7 +246,7 @@ public class PapyrusBot implements BedrockPacketHandler {
         }
 
         if (playerUuid.equals(this.currentFocusedPlayer)) {
-            this.currentState = State.WAITING_FOR_OUT_OF_DATE_PLAYER;
+            this.commandGraph.setState("waiting-for-out-of-date-player");
         }
 
         return false;
@@ -190,7 +270,7 @@ public class PapyrusBot implements BedrockPacketHandler {
         }
 
         if (packet.getUuid().toString().equals(this.currentFocusedPlayer)) {
-            this.currentState = State.WAITING_FOR_OUT_OF_DATE_PLAYER;
+            this.commandGraph.setState("waiting-for-out-of-date-player");
         }
 
         return false;
@@ -204,7 +284,7 @@ public class PapyrusBot implements BedrockPacketHandler {
         packe2t.setRadius(64);
         session.sendPacketImmediately(packe2t);
 
-        this.updateCommands = true;
+        this.updateCommandGraph = true;
 
         return false;
     }
@@ -231,9 +311,9 @@ public class PapyrusBot implements BedrockPacketHandler {
 
     @Override
     public boolean handle(CommandOutputPacket packet) {
-        this.gameModeCommand.onCommandOutputReceived(packet);
-        this.invisibilityCommand.onCommandOutputReceived(packet);
-
+        if (this.updateCommandGraph) {
+            this.commandGraph.onCommandOutputReceived(this, packet);
+        }
         return false;
     }
 
@@ -256,102 +336,8 @@ public class PapyrusBot implements BedrockPacketHandler {
             return;
         }
 
-        if (this.updateCommands) {
-            this.gameModeCommand.update(this);
-            this.invisibilityCommand.update(this);
-        }
-
-        if (!this.gameModeCommand.isSuccess || !this.invisibilityCommand.isSuccess) {
-            this.lastDeopedWarningTime++;
-            if (this.lastDeopedWarningTime > (1000 / 50)) {
-                System.out.println("WARNING: Papyrus user is not operator. Can't function on server!");
-                this.lastDeopedWarningTime = 0;
-            }
-            return;
-        }
-
-        if (this.currentState == State.WAITING_FOR_OUT_OF_DATE_PLAYER) {
-            // Find the first player that is out of date.
-            long now = System.currentTimeMillis();
-
-            for (PlayerListPacket.Entry entry : this.players.values()) {
-                String u = entry.getUuid().toString();
-
-                if (u.equals(this.botUuid.toString())) {
-                    // Exclude bot
-                    continue;
-                }
-
-                if (!this.lastUpdatedTime.containsKey(u)) {
-                    System.out.println("Need to update known location of " + entry.getName() + ", no known location");
-
-                    this.currentFocusedPlayer = u;
-                    this.currentState = State.SEND_TELEPORT;
-                    break;
-                }
-
-                // older than 60 seconds?
-                if (this.lastUpdatedTime.get(u) + (60 * 1000) < now) {
-                    System.out.println("Need to update known location of " + entry.getName() + ", location too old");
-
-                    this.currentFocusedPlayer = u;
-                    this.currentState = State.SEND_TELEPORT;
-                    break;
-                }
-            }
-        }
-
-        if (this.currentFocusedPlayer == null) {
-            return;
-        }
-
-        switch (this.currentState) {
-        case WAITING_FOR_OUT_OF_DATE_PLAYER:
-            // already handled above
-            break;
-        case SEND_TELEPORT:
-            this.currentState = State.WAIT_FOR_POSITION;
-
-            PlayerListPacket.Entry playerEntry = this.players.get(this.currentFocusedPlayer);
-            System.out.println("Requesting teleport to " + playerEntry.getName() + "...");
-            /*
-             * TextPacket packet = new TextPacket(); packet.setMessage("/teleport @s \"" +
-             * playerEntry.getName() + "\""); packet.setNeedsTranslation(false);
-             * packet.setParameters(new ArrayList<String>());
-             * packet.setSourceName("Papyrus"); packet.setType(TextPacket.Type.CHAT);
-             * packet.setPlatformChatId(""); packet.setXuid("");
-             * session.sendPacketImmediately(packet);
-             * 
-             * packet = new TextPacket(); packet.setMessage("/me");
-             * packet.setNeedsTranslation(false); packet.setParameters(new
-             * ArrayList<String>()); packet.setSourceName("Papyrus");
-             * packet.setType(TextPacket.Type.CHAT); packet.setPlatformChatId("");
-             * packet.setXuid(""); session.sendPacketImmediately(packet);
-             */
-
-            CommandRequestPacket cmdPacket = new CommandRequestPacket();
-            cmdPacket.setCommand("execute \"" + playerEntry.getName() + "\" ~ ~ ~ /tp Papyrus ~ ~ ~");
-            cmdPacket.setCommandOriginData(new CommandOriginData(Origin.PLAYER, playerEntry.getUuid(), "teleport", 0L));
-            session.sendPacketImmediately(cmdPacket);
-
-            /*
-             * cmdPacket = new CommandRequestPacket(); cmdPacket.setCommand("/me");
-             * cmdPacket.setCommandOriginData( new CommandOriginData(Origin.PLAYER,
-             * this.botUuid, UUID.randomUUID().toString(), 0L));
-             * session.sendPacketImmediately(cmdPacket);
-             */
-
-            break;
-        case WAIT_FOR_POSITION:
-            // do nothing; wait for packet
-            this.teleportTimeout++;
-            if (this.teleportTimeout > 60 * 10) {
-                // retry
-                System.out.println("Timeout on teleport");
-                this.teleportTimeout = 0;
-                this.currentState = State.SEND_TELEPORT;
-            }
-            break;
+        if (this.updateCommandGraph) {
+            this.commandGraph.update(this);
         }
     }
 }
