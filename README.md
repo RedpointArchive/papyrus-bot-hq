@@ -28,6 +28,15 @@ When the bot joins the server, you must change set permission level to **operato
 
 The command above will serve up a WebSocket on port 80. There's no Papyrus map software that uses this endpoint... yet.
 
+## Features
+
+This bot has the following features:
+
+- Monitors chat messages
+- Periodically checks player positions in the Overworld
+- Correctly detects when people are in the Nether or The End (and doesn't try to show their position, due to Bedrock limitations)
+- Automatically goes to sleep so that players can still skip time overnight
+
 ## Demo
 
 You can see one of these WebSockets in action by connecting to `ws://june-mc-websocket.redpoint.games` with [Simple WebSocket Client](https://chrome.google.com/webstore/detail/simple-websocket-client/pfdhoblngboilpfeibdedpjgfnlcodoo/related?hl=en). Depending if there are people on the server, you'll see something like this:
