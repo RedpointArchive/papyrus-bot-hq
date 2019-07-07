@@ -20,6 +20,7 @@ public class ExecuteCommandNode implements CommandNode {
     public boolean isSuccess = false;
     public boolean isDone = false;
     public RetryPolicy policy = RetryPolicy.NO_RETRY;
+    private int commandTimer = 0;
 
     public enum RetryPolicy {
         NO_RETRY, ALWAYS_RETRY, IGNORE_ERRORS
@@ -42,6 +43,12 @@ public class ExecuteCommandNode implements CommandNode {
 
     @Override
     public void update(StatefulCommandGraph graph, PapyrusBot bot) {
+        if (this.commandTimer > 120) {
+            this.isDone = true;
+            this.hasCurrentCommand = false;
+            LOG.warn("retrying: " + command);
+        }
+
         boolean shouldSend = false;
         if (!this.hasCurrentCommand) {
             switch (this.policy) {
@@ -68,6 +75,9 @@ public class ExecuteCommandNode implements CommandNode {
             bot.session.sendPacketImmediately(cmdPacket);
 
             this.hasCurrentCommand = true;
+            this.commandTimer = 0;
+        } else {
+            this.commandTimer++;
         }
     }
 
@@ -77,10 +87,12 @@ public class ExecuteCommandNode implements CommandNode {
             this.isDone = true;
             this.hasCurrentCommand = false;
             if (packet.getSuccessCount() > 0) {
-                LOG.warn("command success: " + command);
+                LOG.info("command success: " + command);
                 this.isSuccess = true;
+            } else if (this.policy != RetryPolicy.IGNORE_ERRORS) {
+                LOG.error("command failed: " + command + ", " + packet.toString());
             } else {
-                LOG.warn("command failed: " + command + ", " + packet.toString());
+                LOG.info("command failed: " + command + ", " + packet.toString());
             }
         }
     }

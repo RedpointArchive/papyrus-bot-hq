@@ -13,15 +13,21 @@ public class StatefulCommandGraph {
 
     private HashMap<String, CommandNode> states;
     private CommandNode currentNode;
+    private String currentState;
 
     public StatefulCommandGraph() {
         this.states = new HashMap<String, CommandNode>();
         this.currentNode = null;
+        this.currentState = null;
     }
 
     public StatefulCommandGraph add(String name, CommandNode node) {
         this.states.put(name, node);
         return this;
+    }
+
+    public String getState() {
+        return this.currentState;
     }
 
     public StatefulCommandGraph setState(String name) {
@@ -30,6 +36,7 @@ public class StatefulCommandGraph {
         }
         LOG.info("command graph is changing state to: " + name);
         this.currentNode = this.states.get(name);
+        this.currentState = name;
         return this;
     }
 

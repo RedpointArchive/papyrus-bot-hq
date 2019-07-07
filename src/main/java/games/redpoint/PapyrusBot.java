@@ -10,6 +10,7 @@ import java.security.spec.InvalidKeySpecException;
 import java.text.ParseException;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.Random;
 import java.util.UUID;
 
 import javax.crypto.SecretKey;
@@ -21,6 +22,7 @@ import com.flowpowered.math.vector.Vector3f;
 import com.flowpowered.math.vector.Vector3i;
 import com.nimbusds.jwt.SignedJWT;
 import com.nukkitx.protocol.bedrock.BedrockClientSession;
+import com.nukkitx.protocol.bedrock.data.ItemData;
 import com.nukkitx.protocol.bedrock.handler.BedrockPacketHandler;
 import com.nukkitx.protocol.bedrock.packet.AddEntityPacket;
 import com.nukkitx.protocol.bedrock.packet.AddPlayerPacket;
@@ -28,6 +30,7 @@ import com.nukkitx.protocol.bedrock.packet.ClientToServerHandshakePacket;
 import com.nukkitx.protocol.bedrock.packet.CommandOutputPacket;
 import com.nukkitx.protocol.bedrock.packet.DisconnectPacket;
 import com.nukkitx.protocol.bedrock.packet.InteractPacket;
+import com.nukkitx.protocol.bedrock.packet.InventoryTransactionPacket;
 import com.nukkitx.protocol.bedrock.packet.MovePlayerPacket;
 import com.nukkitx.protocol.bedrock.packet.NetworkStackLatencyPacket;
 import com.nukkitx.protocol.bedrock.packet.PlayerActionPacket;
@@ -39,8 +42,11 @@ import com.nukkitx.protocol.bedrock.packet.ResourcePackStackPacket;
 import com.nukkitx.protocol.bedrock.packet.ResourcePacksInfoPacket;
 import com.nukkitx.protocol.bedrock.packet.RespawnPacket;
 import com.nukkitx.protocol.bedrock.packet.ServerToClientHandshakePacket;
+import com.nukkitx.protocol.bedrock.packet.SetEntityDataPacket;
+import com.nukkitx.protocol.bedrock.packet.StartGamePacket;
 import com.nukkitx.protocol.bedrock.packet.TextPacket;
 import com.nukkitx.protocol.bedrock.packet.UpdateBlockPacket;
+import com.nukkitx.protocol.bedrock.packet.InventoryTransactionPacket.Type;
 import com.nukkitx.protocol.bedrock.packet.PlayerActionPacket.Action;
 import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
 
@@ -75,7 +81,9 @@ public class PapyrusBot implements BedrockPacketHandler {
     public ObjectMapper objectMapper;
     private boolean updateCommandGraph;
     private StatefulCommandGraph commandGraph;
-    private int bedRuntimeEntityId = 0;
+    private long botRuntimeEntityId = 0;
+    private String oldState = null;
+    private boolean wasLastSleeping = false;
 
     public PapyrusBot(BedrockClientSession session, KeyPair proxyKeyPair) throws UnknownHostException {
         this.session = session;
@@ -94,12 +102,14 @@ public class PapyrusBot implements BedrockPacketHandler {
         this.commandGraph = new StatefulCommandGraph();
 
         this.commandGraph.add("init",
-                new SequentialCommandNode().add(new ParallelCommandNode(ParallelSuccessState.ALL_SUCCESS)
-                        .add(new ExecuteCommandNode("gamemode creative @s", RetryPolicy.ALWAYS_RETRY))
-                // .add(new ExecuteCommandNode("effect @s invisibility 99999 255 true",
-                // RetryPolicy.ALWAYS_RETRY))
-                ).add(new ExecuteCommandNode("scoreboard objectives add dimension dummy \"Current Dimension\"",
-                        RetryPolicy.IGNORE_ERRORS)).add(new StateChangeCommandNode("setup-bed")));
+                new SequentialCommandNode()
+                        .add(new ParallelCommandNode(ParallelSuccessState.ALL_SUCCESS)
+                                .add(new ExecuteCommandNode("gamemode creative @s", RetryPolicy.ALWAYS_RETRY))
+                                .add(new ExecuteCommandNode("effect @s invisibility 99999 255 true",
+                                        RetryPolicy.ALWAYS_RETRY)))
+                        .add(new ExecuteCommandNode("scoreboard objectives add dimension dummy \"Current Dimension\"",
+                                RetryPolicy.IGNORE_ERRORS))
+                        .add(new StateChangeCommandNode("setup-bed")));
 
         this.commandGraph.add("setup-bed",
                 new SequentialCommandNode().add(new SetBlockCommandNode(new Vector3i(200, 0, 200), "air"))
@@ -133,34 +143,40 @@ public class PapyrusBot implements BedrockPacketHandler {
                         .add(new SetBlockCommandNode(new Vector3i(200, 0, 200), "bed"))
                         .add(new SetBlockCommandNode(new Vector3i(200, 1, 199), "torch"))
                         .add(new DelegatingCommandNode((StatefulCommandGraph graph, PapyrusBot bot) -> {
-                            if (this.bedRuntimeEntityId == 0) {
+                            if (this.botRuntimeEntityId == 0) {
                                 return CommandNodeState.PENDING;
                             }
                             return CommandNodeState.SUCCESS;
-                        })).add(new StateChangeCommandNode("sleep")));
+                        })).add(new StateChangeCommandNode("waiting-for-out-of-date-player")));
 
         this.commandGraph.add("sleep",
-                new SequentialCommandNode().add(new ExecuteCommandNode("time set midnight", RetryPolicy.ALWAYS_RETRY))
+                new SequentialCommandNode()
                         .add(new ExecuteCommandNode("tp @s 201 0 199 90 45", RetryPolicy.ALWAYS_RETRY))
                         .add(new DelegatingCommandNode((StatefulCommandGraph graph, PapyrusBot bot) -> {
-                            LOG.info("Sending player action packet");
-                            PlayerActionPacket packet = new PlayerActionPacket();
-                            packet.setRuntimeEntityId(this.bedRuntimeEntityId);
-                            packet.setBlockPosition(new Vector3i(200, 0, 200));
-                            packet.setAction(Action.START_SLEEP);
-                            session.sendPacketImmediately(packet);
 
-                            LOG.info("Sending interact packet");
-                            InteractPacket packet2 = new InteractPacket();
-                            packet2.setRuntimeEntityId(this.bedRuntimeEntityId);
-                            packet2.setMousePosition(new Vector3f(200, 0, 200));
-                            packet2.setAction(2);
-                            session.sendPacketImmediately(packet2);
+                            LOG.info("Sending inventory transaction packet");
+                            InventoryTransactionPacket invPacket = new InventoryTransactionPacket();
+                            invPacket.setTransactionType(Type.ITEM_USE);
+                            invPacket.setActionType(0);
+                            invPacket.setBlockPosition(new Vector3i(200, 0, 200));
+                            invPacket.setFace(0);
+                            invPacket.setHotbarSlot(0);
+                            invPacket.setItemInHand(ItemData.AIR);
+                            invPacket.setPlayerPosition(new Vector3f(201, 0, 199));
+                            invPacket.setClickPosition(new Vector3f(0.5, 0.5, 0.5));
+                            invPacket.setRuntimeEntityId(this.botRuntimeEntityId);
+                            session.sendPacket(invPacket);
+                            /*
+                             * LOG.info("Sending player action packet"); PlayerActionPacket packet = new
+                             * PlayerActionPacket(); packet.setRuntimeEntityId(this.botRuntimeEntityId);
+                             * packet.setBlockPosition(new Vector3i(200, 0, 200)); packet.setFace(0);
+                             * packet.setAction(Action.START_SLEEP); session.sendPacket(packet);
+                             */
+
+                            this.wasLastSleeping = true;
 
                             return CommandNodeState.SUCCESS;
-                        })));/*
-                              * .add(new StateChangeCommandNode("waiting-for-out-of-date-player")))
-                              */
+                        })).add(new StateChangeCommandNode("waiting-for-out-of-date-player")));
 
         this.commandGraph.add("waiting-for-out-of-date-player",
                 new ConditionalCommandNode(new DelegatingCommandNode((StatefulCommandGraph graph, PapyrusBot bot) -> {
@@ -179,6 +195,7 @@ public class PapyrusBot implements BedrockPacketHandler {
                             LOG.info("Need to update known location of " + entry.getName() + ", no known location");
 
                             this.currentFocusedPlayer = u;
+                            this.wasLastSleeping = false;
                             return CommandNodeState.SUCCESS;
                         }
 
@@ -187,12 +204,30 @@ public class PapyrusBot implements BedrockPacketHandler {
                             LOG.info("Need to update known location of " + entry.getName() + ", location too old");
 
                             this.currentFocusedPlayer = u;
+                            this.wasLastSleeping = false;
                             return CommandNodeState.SUCCESS;
                         }
                     }
 
-                    return CommandNodeState.PENDING;
-                })).onSuccess(new StateChangeCommandNode("check-dimension")));
+                    if (this.wasLastSleeping) {
+                        InventoryTransactionPacket invPacket = new InventoryTransactionPacket();
+                        invPacket.setTransactionType(Type.ITEM_USE);
+                        invPacket.setActionType(0);
+                        invPacket.setBlockPosition(new Vector3i(200, 0, 200));
+                        invPacket.setFace(0);
+                        invPacket.setHotbarSlot(0);
+                        invPacket.setItemInHand(ItemData.AIR);
+                        invPacket.setPlayerPosition(new Vector3f(201, 0, 199));
+                        invPacket.setClickPosition(new Vector3f(0.5, 0.5, 0.5));
+                        invPacket.setRuntimeEntityId(this.botRuntimeEntityId);
+                        session.sendPacket(invPacket);
+
+                        return CommandNodeState.PENDING;
+                    } else {
+                        return CommandNodeState.FAILED;
+                    }
+                })).onSuccess(new StateChangeCommandNode("check-dimension"))
+                        .onFailed(new StateChangeCommandNode("sleep")));
 
         this.commandGraph.add("check-dimension",
                 new FactoryCommandNode((StatefulCommandGraph graph, PapyrusBot bot) -> {
@@ -256,12 +291,18 @@ public class PapyrusBot implements BedrockPacketHandler {
     }
 
     @Override
-    public boolean handle(UpdateBlockPacket packet) {
-        if (packet.getBlockPosition().getX() == 200 && packet.getBlockPosition().getY() == 0
-                && packet.getBlockPosition().getZ() == 200) {
-            LOG.warn("Found bed, it's runtime entity ID is " + this.bedRuntimeEntityId);
-            this.bedRuntimeEntityId = packet.getRuntimeId();
-            return true;
+    public boolean handle(PlayerActionPacket packet) {
+        LOG.warn(packet.toString());
+        if (packet.getAction() == Action.START_SLEEP) {
+            // someone is sleeping, start sleeping
+            LOG.warn("switching to sleep...");
+            this.oldState = this.commandGraph.getState();
+            this.commandGraph.setState("sleep");
+        }
+        if (packet.getAction() == Action.STOP_SLEEP && this.oldState != null) {
+            LOG.warn("stopping sleep...");
+            // someone stopped sleeping, stop sleeping
+            this.commandGraph.setState(this.oldState);
         }
         return false;
     }
@@ -297,12 +338,6 @@ public class PapyrusBot implements BedrockPacketHandler {
     }
 
     @Override
-    public boolean handle(AddEntityPacket packet) {
-        LOG.info("Add entity: " + packet.getIdentifier());
-        return false;
-    }
-
-    @Override
     public boolean handle(MovePlayerPacket packet) {
         if (!this.runtimePlayerLookup.containsKey(packet.getRuntimeEntityId())) {
             return false;
@@ -330,6 +365,12 @@ public class PapyrusBot implements BedrockPacketHandler {
             this.commandGraph.setState("waiting-for-out-of-date-player");
         }
 
+        return false;
+    }
+
+    @Override
+    public boolean handle(StartGamePacket packet) {
+        this.botRuntimeEntityId = packet.getRuntimeEntityId();
         return false;
     }
 
@@ -401,6 +442,10 @@ public class PapyrusBot implements BedrockPacketHandler {
     @Override
     public boolean handle(TextPacket packet) {
         PlayerChatWebSocketMessage msg = new PlayerChatWebSocketMessage();
+        if (packet.getSourceName() == null) {
+            // system message, ignore
+            return false;
+        }
         msg.playerName = packet.getSourceName();
         msg.message = packet.getMessage();
         try {
