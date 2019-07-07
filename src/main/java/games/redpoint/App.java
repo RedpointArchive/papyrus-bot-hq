@@ -57,6 +57,10 @@ public class App {
 
         String host = System.getenv().get("MINECRAFT_SERVER_HOST");
         int port = Integer.parseInt(System.getenv().get("MINECRAFT_SERVER_PORT"));
+        int botTickRate = Integer.parseInt(System.getenv().get("BOT_TICK_RATE"));
+        if (botTickRate < 50) {
+            botTickRate = 50;
+        }
 
         InetSocketAddress addressToConnect = new InetSocketAddress(host, port);
 
@@ -147,7 +151,7 @@ public class App {
         while (running.get()) {
             try {
                 synchronized (this) {
-                    this.wait(50);
+                    this.wait(botTickRate);
 
                     if (this.bot != null) {
                         this.bot.update();
