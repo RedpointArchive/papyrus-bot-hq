@@ -9,7 +9,10 @@ import com.nukkitx.protocol.bedrock.packet.PlayerListPacket;
 
 import org.apache.log4j.Logger;
 import org.java_websocket.WebSocket;
+import org.java_websocket.drafts.Draft;
+import org.java_websocket.exceptions.InvalidDataException;
 import org.java_websocket.handshake.ClientHandshake;
+import org.java_websocket.handshake.ServerHandshakeBuilder;
 import org.java_websocket.server.WebSocketServer;
 
 public class BotWebSocketServer extends WebSocketServer {
@@ -21,6 +24,14 @@ public class BotWebSocketServer extends WebSocketServer {
         super(new InetSocketAddress(8080));
 
         this.bot = bot;
+    }
+
+    @Override
+    public ServerHandshakeBuilder onWebsocketHandshakeReceivedAsServer(WebSocket conn, Draft draft,
+            ClientHandshake request) throws InvalidDataException {
+        ServerHandshakeBuilder builder = super.onWebsocketHandshakeReceivedAsServer(conn, draft, request);
+        builder.put("Access-Control-Allow-Origin", "*");
+        return builder;
     }
 
     @Override

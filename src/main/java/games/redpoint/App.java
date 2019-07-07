@@ -55,9 +55,12 @@ public class App {
 
         client.bind().join();
 
-        InetSocketAddress addressToConnect = new InetSocketAddress("34.94.110.9", 19132);
+        String host = System.getenv().get("MINECRAFT_SERVER_HOST");
+        int port = Integer.parseInt(System.getenv().get("MINECRAFT_SERVER_PORT"));
 
-        System.out.println("Connected");
+        InetSocketAddress addressToConnect = new InetSocketAddress(host, port);
+
+        System.out.println("Connected to " + host + ":" + port);
         client.connect(addressToConnect).whenComplete((session, throwable) -> {
             if (throwable != null) {
                 System.out.println(throwable);
@@ -65,64 +68,14 @@ public class App {
             }
             session.setPacketCodec(Bedrock_v354.V354_CODEC);
 
-            // ArrayNode chainData;
-
             KeyPair proxyKeyPair = EncryptionUtils.createKeyPair();
             ObjectMapper jsonMapper = new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
-
-            /*
-             * JsonNode certData; try { // todo: packet doesn't exist certData =
-             * jsonMapper.readTree(packet.getChainData().toByteArray()); } catch
-             * (IOException e) { throw new
-             * RuntimeException("Certificate JSON can not be read."); }
-             * 
-             * JsonNode certChainData = certData.get("chain"); if
-             * (certChainData.getNodeType() != JsonNodeType.ARRAY) { throw new
-             * RuntimeException("Certificate data is not valid"); } chainData = (ArrayNode)
-             * certChainData;
-             * 
-             * JSONObject skinData; JSONObject extraData; AuthData authData; JWSObject jwt =
-             * JWSObject.parse(certChainData.get(certChainData.size() - 1).asText());
-             * 
-             * // jwt is the JWT in the chain data at this point
-             * 
-             * JsonNode payload = jsonMapper.readTree(jwt.getPayload().toBytes());
-             * 
-             * if (payload.get("extraData").getNodeType() != JsonNodeType.OBJECT) { throw
-             * new RuntimeException("AuthData was not found!"); }
-             * 
-             * extraData = (JSONObject) jwt.getPayload().toJSONObject().get("extraData");
-             * 
-             * authData = new AuthData(extraData.getAsString("displayName"),
-             * UUID.fromString(extraData.getAsString("identity")),
-             * extraData.getAsString("XUID"));
-             * 
-             * if (payload.get("identityPublicKey").getNodeType() != JsonNodeType.STRING) {
-             * throw new RuntimeException("Identity Public Key was not found!"); }
-             * ECPublicKey identityPublicKey =
-             * EncryptionUtils.generateKey(payload.get("identityPublicKey").textValue());
-             */
-
-            /*
-             * AuthData authData = new AuthData( "hachqueAU",
-             * UUID.fromString("5e430d09-efb1-3b9e-b29b-a8a4f5bf3d5e"), "2533274941093282"
-             * );
-             */
 
             UUID identity = UUID.randomUUID();
 
             JSONObject extraData = new JSONObject();
             extraData.put("displayName", "Papyrus");
             extraData.put("identity", identity.toString());
-            // extraData.put("XUID", "2533274941093282");
-
-            /*
-             * ECPublicKey identityPublicKey; try { identityPublicKey =
-             * EncryptionUtils.generateKey(
-             * "MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE8ELkixyLcwlZryUQcu1TvPOmI2B7vX83ndnWRUaXm74wFfa5f/lwQNTfrLVHa2PmenpGI6JhIMUJaWZrjmMj90NoKNFSNBuKdm8rYiXsfaz3K36x/1U26HpG0ZxK/V1V"
-             * ); } catch (NoSuchAlgorithmException ex) {} catch (InvalidKeySpecException
-             * ex) {}
-             */
 
             Random rand = new Random();
 
@@ -148,12 +101,6 @@ public class App {
             skinData.put("SkinId", SkinConstants.SkinId);
             skinData.put("ThirdPartyName", "Papyrus");
             skinData.put("UIProfile", 0);
-
-            /*
-             * // todo: packet doesn't exist JWSObject clientJwt =
-             * JWSObject.parse(packet.getSkinData().toString()); skinData =
-             * clientJwt.getPayload().toJSONObject();
-             */
 
             SignedJWT authDataSigned = forgeAuthData(proxyKeyPair, extraData);
             JWSObject skinDataSigned = forgeSkinData(proxyKeyPair, skinData);
@@ -181,7 +128,6 @@ public class App {
             }
 
             session.sendPacketImmediately(login);
-            // session.setBatchedHandler(new PacketBatchHandler(packetHandler));
             session.setLogging(true);
             session.setPacketHandler(this.bot);
 
